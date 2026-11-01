@@ -10,7 +10,7 @@ Cartographer 建图、EKF、AMCL 定位、Nav2 导航和 Web 控制台。v1 无�
 |---|---|
 | 返航终点误差 | **7.3 cm**（dx -6.4 / dy 3.5），航向 **0.2°** |
 | 停车后 AMCL 收敛跳变 | **3.1 cm** |
-| 现场卷尺/目测物理误差 | 约 **8 cm** |
+| 现场实测物理误差 | 约 **8 cm** |
 | 任意位置全局定位 | inlier 0.89–0.95，平均距离 0.05–0.07 m |
 | 静止陀螺零偏 | 0.0012 °/s（约 0.1 °/min），29 s 积分漂移 0.0° |
 
@@ -306,9 +306,9 @@ bash ~/carctl status
 
 ## 5. 标定
 
-### 5.1 轮径（不用卷尺，雷达当尺子）
+### 5.1 轮径（雷达当尺子）
 
-场地小、卷尺量不准时用这个：
+用激光雷达测墙距变化作为真实位移：
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -390,7 +390,7 @@ cp ~/logs/latest.txt ~/logs/keep_$(date +%H%M).txt   # 需要留档时先复制
 │   ├── map_tools.py       PGM/降噪/拟合检查/地图库
 │   ├── map_localize.py    单帧全局定位
 │   ├── data_logger.py     30 Hz 本地记录
-│   ├── odom_tape.py       卷尺标定助手
+│   ├── odom_tape.py       直行标定助手
 │   ├── odom_lidar_calib.py 雷达墙距标定
 │   ├── *_tmini.yaml/lua/launch.py  参数与启动
 │   └── carctl            一键启停
