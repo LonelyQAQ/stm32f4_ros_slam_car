@@ -1,0 +1,27 @@
+# YDLIDAR T-mini Plus (ROS 2 Humble)
+# 部署路径：/home/nvidia/ydlidar_ws/tmini_plus.yaml
+# 单位: 角度 deg, 距离 m, 频率 Hz
+ydlidar_ros2_driver_node:
+  ros__parameters:
+    port: /dev/ydlidar
+    frame_id: laser_frame
+    ignore_array: ""
+    baudrate: 230400
+    lidar_type: 1            # TYPE_TRIANGLE
+    device_type: 0           # YDLIDAR_TYPE_SERIAL
+    sample_rate: 4
+    intensity_bit: 8
+    abnormal_check_count: 4
+    fixed_resolution: true
+    reversion: false          # 角度翻转 180
+    inverted: true           # 输出逆时针(ROS 右手系)
+    auto_reconnect: true
+    isSingleChannel: false
+    intensity: true
+    support_motor_dtr: false
+    angle_max: 180.0
+    angle_min: -180.0
+    range_max: 6.0           # 室内只用 6 m，压掉远端噪点
+    range_min: 0.1           # 低于 0.1 m 视为无效（机器人本体/噪声）
+    frequency: 8.0           # 6~12Hz, 出厂 6Hz
+    invalid_range_is_inf: true

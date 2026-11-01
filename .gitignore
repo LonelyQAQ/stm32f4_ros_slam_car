@@ -1,0 +1,37 @@
+# Keil 构建产物
+*.o
+*.d
+*.crf
+*.dep
+*.lnp
+*.axf
+*.hex
+*.bin
+*.map
+*.sct
+*.lst
+*.htm
+*.build_log.htm
+*.uvguix.*
+*.uvprojx.bak
+stm32/MDK-ARM/ROS_STM32_Test/
+stm32/MDK-ARM/RTE/
+stm32/MDK-ARM/DebugConfig/
+stm32/MDK-ARM/build.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python 运行产物
+__pycache__/
+*.pyc
+.pytest_cache/
+jetson/logs/

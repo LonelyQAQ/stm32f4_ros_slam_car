@@ -1,0 +1,18 @@
+version: 1
+repowiki:
+  notes:
+    - text: 本工程是 STM32F407（底盘实时控制）+ Jetson Orin Nano（雷达、SLAM、Nav2、Web 控制台）的差速 SLAM 小车，两侧通过 921600 自定义帧 UART 通信。
+    - text: 雷达 T-mini Plus 的量程固定为 0.1–6.0 m；slam_toolbox 与 Nav2 代价地图必须使用同一范围，超出范围的点按无效值处理。
+    - text: 雷达 T-mini Plus 的 0° 与车头相差 180°；静态 TF base_link→laser_frame 必须为 yaw=π，safety_guard 与 webui 的 scan_yaw_offset 也必须同步为 π，否则前后扇区互换、导航箭头与车头相反。
+    - text: 车体正方向对应 BMI088 的 -Y 轴（Z 轴朝上）；IMU 安装矩阵必须保持右手系（x 前、y 左、z 上）。
+    - text: 近距避障阈值为 0.5 m，必须连续 2–3 帧且由相邻点簇确认后才触发；避障安全层输出 /cmd_vel_safe，是到 STM32 前的强制过滤，不允许绕过。
+    - text: 建图与导航可同时运行：Nav2 直接使用 slam_toolbox 的实时 /map，不启动 AMCL 或 map_server；返航默认目标为 map 原点，并支持网页重设。
+    - text: 手动遥控与 Nav2 自动导航互斥：网页发 /cmd_vel_manual，Nav2 最终输出 /cmd_vel，经 cmd_mux 与 safety_guard 后以 /cmd_vel_safe 到 STM32；急停在任何模式下都必须有效。
+    - text: 所有阈值、量程、速度限制必须放在 YAML 或 *_cfg.h 并带单位，不写死在代码里；每次改动记录到工程根目录 DEVLOG.md。
+    - text: IMU 当前不参与 odom/SLAM/Nav2 融合，只发布/显示；IMU yaw 无磁力计会漂移。SLAM 暂停时 map→odom 冻结，设原点与导航必须在 SLAM 运行稳定后进行。
+    - text: 返航 home 必须与 map 帧身份绑定；SLAM 重启或清图后 map 帧原点重置，旧 home 立即失效并必须提示重新设原点。安全层阈值不得大于 Nav2 costmap 可行域，否则 planner 会规划到安全层必拦的区域。
+knowledgecard:
+  notes:
+    - text: Jetson 侧按职责拆分：frame_bridge（串口↔ROS）、webui/webui_state（HTTP/SSE 与共享状态）、nav_manager（Nav2 目标与返航）、cmd_mux（手动/自动仲裁）、safety_guard（近距避障）、slam_manager（建图启停）、ydlidar_tmini.launch.py（雷达+180° TF）、carctl（基础栈启停）。
+    - text: STM32 侧保持 System→Protocol→Device→firmware 分层；轮速 PID 参数在 board_cfg.h，IMU 安装矩阵在 app_cfg.h，禁止在 .c 中写魔法数字。
+    - text: Web 控制台是唯一人工操作入口，负责地图/扫描/位姿显示、手动遥控、手动/自动切换、设原点/返航与急停。

@@ -1,0 +1,53 @@
+# robot_localization EKF —— 轮速里程计 + BMI088 偏航角速度
+#
+# 融合策略（2D 差速底盘）：
+#   odom0 = /odom（桥接用编码器算的 vx、vyaw）→ 只吃 vx / vyaw，不吃绝对位姿
+#   imu0  = /imu/data_raw（VQF 6D，机身系）→ 只吃 vyaw
+#   yaw 绝对角两边都不吃：轮式 yaw 会打滑漂，6D IMU 无磁力计 yaw 漂移 ~5°/min，
+#   绝对航向交给 Cartographer / AMCL 的 map→odom 校正。
+#
+# 输出：/odometry/filtered + TF odom→base_link（桥接不再发这条 TF）
+
+ekf_filter_node:
+  ros__parameters:
+    frequency: 50.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    print_diagnostics: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # ---- 轮速里程计 ----
+    odom0: /odom
+    odom0_config: [false, false, false,     # x y z
+                   false, false, false,     # roll pitch yaw
+                   true,  false, false,     # vx —— 编码器唯一可信量
+                   false, false, false,     # vyaw 关掉！见下
+                   false, false, false]     # 加速度不用
+    odom0_differential: true        # 用增量，避免绝对位姿被反复积分
+    odom0_relative: false
+    odom0_queue_size: 10
+    odom0_nodelay: true
+
+    # ---- IMU（VQF 6D）----
+    imu0: /imu/data_raw
+    # vyaw 只信陀螺：
+    # 2026-11-01 实测，车没动时 EKF yaw 累计到 −36.95°，而 IMU 只有 +0.13°。
+    # 原因是手推/打滑时"轮速差算出的角速度"是假的，EKF 跟着它跑偏。
+    # 轮子只提供 vx（直行速度），航向完全交给陀螺（已做 ZUPT 零偏修正，静止漂移 0.09°/min）。
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,      # 只吃 vyaw
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 20
+    imu0_nodelay: true
+    imu0_remove_gravitational_acceleration: false   # 不吃加速度，这项无影响
+
+    # 过程噪声/初始协方差用 robot_localization 默认值（YAML 序列要求同类型，手写 15x15 易错）

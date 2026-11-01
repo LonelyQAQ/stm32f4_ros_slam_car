@@ -1,0 +1,33 @@
+# cmd_mux / safety_guard 参数（Jetson 侧）
+# 部署路径：/home/nvidia/car_aux.yaml
+cmd_mux:
+  ros__parameters:
+    manual_topic: /cmd_vel_manual
+    nav_topic: /cmd_vel          # Nav2 官方 navigation_launch.py 的最终输出
+    mode_topic: /nav_mode
+    out_topic: /cmd_vel_raw
+    rate_hz: 20.0
+    input_timeout_ms: 400
+    switch_zero_ms: 200
+
+safety_guard:
+  ros__parameters:
+    scan_topic: /scan
+    cmd_in_topic: /cmd_vel_raw
+    cmd_out_topic: /cmd_vel_safe
+    state_topic: /safety_guard/state
+    rate_hz: 20.0
+    avoid_distance_m: 0.5
+    release_distance_m: 0.7
+    confirm_scans: 3
+    release_scans: 3
+    min_cluster_points: 3
+    neighbor_angle_deg: 8.0
+    front_half_angle_deg: 40.0
+    rear_half_angle_deg: 40.0
+    side_clearance_m: 0.3
+    input_timeout_ms: 300
+    scan_timeout_ms: 800
+    min_range_m: 0.1
+    max_range_m: 6.0
+    scan_yaw_offset_rad: 3.14159265   # 雷达 0° 与车头相反，转到 base_link 需 +π

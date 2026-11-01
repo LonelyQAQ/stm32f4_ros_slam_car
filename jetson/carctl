@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# 小车基础栈启停（Jetson）
+#   ./carctl up        启动雷达 + frame_bridge + cmd_mux + safety_guard + webui
+#   ./carctl down      停止以上全部（含 Nav2）
+#   ./carctl nav on    启动 Nav2
+#   ./carctl nav off   停止 Nav2
+#   ./carctl status    查看进程
+set -u
+
+ROS_SETUP=/opt/ros/humble/setup.bash
+YDLIDAR_SETUP=/home/nvidia/ydlidar_ws/install/setup.bash
+RUN=/tmp
+
+start_one() {
+  local pattern="$1" log="$2" cmd="$3"
+  if pgrep -f "$pattern" >/dev/null 2>&1; then
+    echo "[skip ] $pattern"
+    return
+  fi
+  nohup bash -lc "source $ROS_SETUP && $cmd" > "$RUN/$log" 2>&1 &
+  echo "[start] $pattern pid=$!"
+  sleep 0.5
+}
+
+stop_one() {
+  local pattern="$1"
+  if pgrep -f "$pattern" >/dev/null 2>&1; then
+    pkill -INT -f "$pattern" || true
+    echo "[stop ] $pattern"
+  else
+    echo "[idle ] $pattern"
+  fi
+}
+
+up() {
+  start_one "ydlidar_tmini.launch.py" "car_ydlidar.log" \
+    "source $YDLIDAR_SETUP && ros2 launch /home/nvidia/ydlidar_tmini.launch.py params_file:=/home/nvidia/ydlidar_ws/tmini_plus.yaml"
+  start_one "frame_bridge.py" "car_bridge.log" \
+    "python3 /home/nvidia/frame_bridge.py /dev/ttyTHS1 921600"
+  # odom->base_link 由 EKF 发布，建图/定位/Nav2 都依赖它
+  start_one "ekf_tmini.launch.py" "car_ekf.log" \
+    "ros2 launch /home/nvidia/ekf_tmini.launch.py"
+  start_one "cmd_mux.py" "car_mux.log" \
+    "python3 /home/nvidia/cmd_mux.py --ros-args --params-file /home/nvidia/car_aux.yaml"
+  start_one "safety_guard.py" "car_guard.log" \
+    "python3 /home/nvidia/safety_guard.py --ros-args --params-file /home/nvidia/car_aux.yaml"
+  start_one "webui.py" "car_webui.log" \
+    "python3 /home/nvidia/webui.py --ros-args --params-file /home/nvidia/car_aux.yaml"
+  echo "[info ] http://<jetson-ip>:8080"
+}
+
+down() {
+  stop_one "webui.py"
+  stop_one "navigation_launch.py"
+  stop_one "nav2_bringup"
+  stop_one "localization_launch.py"
+  stop_one "nav2_amcl/amcl"
+  stop_one "nav2_map_server/map_server"
+  stop_one "cartographer_tmini.launch.py"
+  stop_one "cartographer_node"
+  stop_one "cartographer_occupancy_grid_node"
+  stop_one "safety_guard.py"
+  stop_one "cmd_mux.py"
+  stop_one "frame_bridge.py"
+  stop_one "ekf_tmini.launch.py"
+  stop_one "ekf_filter_node"
+  stop_one "ydlidar_tmini.launch.py"
+  stop_one "ydlidar_launch.py"
+  stop_one "ydlidar_ros2_driver_node"
+  stop_one "data_logger.py"
+}
+
+nav_on() {
+  if pgrep -f "navigation_launch.py" >/dev/null 2>&1; then
+    echo "[skip ] Nav2 已在运行"
+    return
+  fi
+  nohup bash -lc "source $ROS_SETUP && ros2 launch nav2_bringup navigation_launch.py params_file:=/home/nvidia/nav2_tmini.yaml use_sim_time:=false" \
+    > "$RUN/nav2.log" 2>&1 &
+  echo "[start] Nav2 pid=$! (日志 $RUN/nav2.log)"
+}
+
+nav_off() {
+  stop_one "navigation_launch.py"
+  stop_one "nav2_bringup"
+}
+
+status() {
+  pgrep -af "ydlidar_tmini.launch.py|ydlidar_launch.py|ydlidar_ros2_driver_node|frame_bridge.py|ekf_tmini.launch.py|ekf_filter_node|cmd_mux.py|safety_guard.py|webui.py|data_logger.py|navigation_launch.py|localization_launch.py|cartographer_node|cartographer_occupancy_grid_node" || true
+}
+
+case "${1:-up}" in
+  up) up ;;
+  down) down ;;
+  nav)
+    case "${2:-on}" in
+      on) nav_on ;;
+      off) nav_off ;;
+      *) echo "用法: $0 nav on|off"; exit 2 ;;
+    esac
+    ;;
+  status) status ;;
+  *) echo "用法: $0 {up|down|nav on|nav off|status}"; exit 2 ;;
+esac
